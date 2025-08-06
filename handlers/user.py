@@ -217,8 +217,8 @@ async def approve_payment(message: Message):
         payment.approved_by = message.from_user.id
         payment.confirmed_at = datetime.datetime.now(pytz.timezone("Etc/GMT-5"))
         session.commit()
-        create_client_for_user(tg_user_id=user_id, duration_days=duration)
-        vpn_link = generate_vpn_link(f"{user_id}@MrPavlik.ru")
+        await create_client_for_user(tg_user_id=user_id, duration_days=duration)
+        vpn_link = await generate_vpn_link(f"{user_id}@MrPavlik.ru")
 
         # Отправить юзеру VPN-инструкцию
         await message.bot.send_message(
