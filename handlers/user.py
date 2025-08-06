@@ -9,7 +9,11 @@ from sqlalchemy.orm import sessionmaker
 from db.add import add_payment
 from db.create_db import Payment, engine
 from handlers.api_3xui import create_client_for_user, generate_vpn_link
-from keyboards.default import main_keyboard, choice_time_keyboard, payment_keyboard, confirm_or_deny_keyboard
+from keyboards.default import (main_keyboard,
+                               choice_time_keyboard,
+                               payment_keyboard,
+                               confirm_or_deny_keyboard, \
+                               back_to_main_menu_keyboard)
 
 SUBSCRIPTION_TEXTS = {
     "1_day": ["1 день", 1],
@@ -35,27 +39,52 @@ SessionLocal = sessionmaker(bind=engine)
 @router.message(Command("start"))
 async def start_handler(message: Message):
     """команда /start -> Выбор тарифа/Инфо об аккаунте"""
-    await message.answer("Привет! Выбери тариф, чтобы купить VPN-доступ.", reply_markup=main_keyboard)
+    await message.answer(
+        "Привет! Выбери тариф, чтобы купить VPN-доступ.",
+        reply_markup=main_keyboard
+    )
 
 
 @router.callback_query(F.data == "to_main_menu")
 async def handle_back_to_main(callback: CallbackQuery):
     """Выбор тарифа/Инфо об аккаунте"""
-    await callback.message.answer("Главное меню", reply_markup=main_keyboard)
+    await callback.message.answer(
+        "Главное меню",
+        reply_markup=main_keyboard
+    )
 
 
 @router.callback_query(F.data == "buy_access")
 async def handle_buy_access(callback: CallbackQuery):
     """Выбор продолжительности подписки"""
-    await callback.message.answer("Выбери продолжительность подписки:", reply_markup=choice_time_keyboard)
+    await callback.message.answer(
+        "Выбери продолжительность подписки:",
+        reply_markup=choice_time_keyboard
+    )
+
+
+@router.callback_query(F.data == "support")
+async def handle_support(callback: CallbackQuery):
+    """Обращение к технической поддержке"""
+    await callback.answer()
+    await callback.message.answer(
+        "👨‍💻 По всем вопросам обращайтесь к администратору: @pavelvpgg1",
+        reply_markup=back_to_main_menu_keyboard
+    )
 
 
 @router.callback_query(F.data.in_(SUBSCRIPTION_TEXTS.keys()))
 async def handle_subscription_choice(callback: CallbackQuery):
     """Выбор способа оплаты"""
     duration = SUBSCRIPTION_TEXTS[callback.data][0]
-    await callback.message.answer(f"Вы выбрали продолжительность подписки: `{duration}`", parse_mode="Markdown")
-    await callback.message.answer("Выберите способ оплаты:", reply_markup=payment_keyboard)
+    await callback.message.answer(
+        f"⌛ Вы выбрали продолжительность подписки: `{duration}`",
+        parse_mode="Markdown"
+    )
+    await callback.message.answer(
+        "🔀 Выберите способ оплаты:",
+        reply_markup=payment_keyboard
+    )
     global DURATION
     DURATION = SUBSCRIPTION_TEXTS[callback.data][1]
 
@@ -71,7 +100,7 @@ async def pay_sbp_handler(callback: CallbackQuery):
         )
     )
     await callback.message.answer(
-        f"❗❗❗В комментарии к оплате укажите свой тг id \n🆔 Telegram ID: `{callback.from_user.id}`",
+        f"❗❗❗В комментарии к оплате укажите свой тг id \n🆔 Ваш telegram ID: `{callback.from_user.id}`",
         reply_markup=confirm_or_deny_keyboard,
         parse_mode="Markdown"
     )
@@ -90,9 +119,14 @@ async def pay_paid_handler(callback: CallbackQuery):
 
     success = add_payment(tg_user_id, username, payment_method, status, duration)
     if success:
-        await callback.message.answer("💾Ваш запрос принят на рассмотрение, в течение часа будет готов ваш доступ к VPN")
+        await callback.message.answer(
+            "💾 Ваш запрос принят на рассмотрение, в течение часа будет готов ваш доступ к VPN",
+            reply_markup=back_to_main_menu_keyboard
+        )
     else:
-        await callback.message.answer("❗Что-то пошло не так! Пожалуйста, обратитесь к администрартору (@pavelvpgg1)")
+        await callback.message.answer(
+            "❗ Что-то пошло не так! Пожалуйста, обратитесь к администрартору (@pavelvpgg1)"
+        )
 
 
 # Аккаунт пользователя
@@ -116,26 +150,38 @@ async def handle_my_account(callback: CallbackQuery):
             days_left = ((payment.created_at + datetime.timedelta(days=payment.duration)) - payment.created_at).days
             approved_by = [key for key, value in ADMIN_ID.items() if value == payment.approved_by][0]
             await callback.message.answer(
-                text=("Твой аккаунт:\n"
-                      f"Имя: `{callback.from_user.first_name}`\n"
-                      f"Подписка активна до: `{active_until}`\n"
-                      f"До конца подписки: {days_left} дней\n"
-                      f"Оплата была произведена при помощи: `{payment_method}`\n"
-                      f"Статус вашей оплаты: `{status}`\n"
-                      f"Ваш запрос подтвердил админ: `{approved_by}`\n"),
-                parse_mode="Markdown")
+                text=("⚙️ Ваш аккаунт:\n"
+                      f"📛 Имя: `{callback.from_user.first_name}`\n"
+                      f"⌛ Подписка активна до: `{active_until}`\n"
+                      f"⏳ До конца подписки: {days_left} дней\n"
+                      f"💸 Оплата была произведена при помощи: `{payment_method}`\n"
+                      f"✨ Статус вашей оплаты: `{status}`\n"
+                      f"✅ Ваш запрос подтвердил админ: `{approved_by}`\n"),
+                parse_mode="Markdown", reply_markup=back_to_main_menu_keyboard
+            )
         elif status == "pending":
             await callback.message.answer(
-                text=("Ваш аккаунт:\n"
-                      f"Имя: `{callback.from_user.first_name}`\n"
-                      f"Оплата была произведена при помощи: `{payment_method}`\n"
-                      f"Статус вашей оплаты: `{status}`\n"
+                text=("⚙️ Ваш аккаунт:\n"
+                      f"📛 Имя: `{callback.from_user.first_name}`\n"
+                      f"💸 Оплата была произведена при помощи: `{payment_method}`\n"
+                      f"🕔 Статус вашей оплаты: `{status}`\n"
                       "❗Ваш запрос пока что не подтвержден\n"),
-                parse_mode="Markdown")
+                parse_mode="Markdown", reply_markup=back_to_main_menu_keyboard
+            )
+        elif status == "rejected":
+            await callback.message.answer(
+                text=("⚙️ Ваш аккаунт:\n"
+                      f"📛 Имя: `{callback.from_user.first_name}`\n"
+                      f"❌ Статус вашей оплаты: `{status}`\n"
+                      "❗Ваш запрос был отклонен. Если эта была ошибка, пожалуйста, свяжитесь с тех.поддержкой\n"),
+                parse_mode="Markdown", reply_markup=back_to_main_menu_keyboard
+            )
 
     except Exception as e:
         await callback.message.answer(
-            "❗ Ошибка при попытке просмотра аккаунта! Пожалуйста, обратитесь к администрартору (@pavelvpgg1)")
+            "❗ Ошибка при попытке просмотра аккаунта! Пожалуйста, обратитесь к тех.поддержке.",
+            reply_markup=back_to_main_menu_keyboard
+        )
         print(f"[account error] {e}")
         session.rollback()
     finally:
@@ -201,31 +247,73 @@ async def approve_payment(message: Message):
             ),
             parse_mode="Markdown"
         )
+
         # файл для Android
         v2ray_android = FSInputFile("files/v2rayNG_1.9.30_APKPure.apk")
         await message.bot.send_document(
             chat_id=user_id,
             document=v2ray_android,
-            caption="Приложение для Android"
+            caption="📱 Приложение для Android"
         )
+
         # файл для Windows
         neko_windows = FSInputFile("files/nekoray-4.0.1-2024-12-12-windows64.zip")
         await message.bot.send_document(
             chat_id=user_id,
             document=neko_windows,
-            caption="Приложение для Windows"
+            caption="🖥️ Приложение для Windows"
         )
+
         # файл для Linux
         neko_linux = FSInputFile("files/nekoray-4.0.1-2024-12-12-linux64.zip")
         await message.bot.send_document(
             chat_id=user_id,
             document=neko_linux,
-            caption="Приложение для Linux")
+            caption="🖥️ Приложение для Linux")
 
         await message.answer(f"✅ Доступ выдан пользователю {user_id}")
     except Exception as e:
-        await message.answer("❗ Ошибка при выдаче доступа! Пожалуйста, обратитесь к администрартору (@pavelvpgg1)")
+        await message.answer("❗ Ошибка при выдаче доступа!")
         print(f"[approve error] {e}")
+        session.rollback()
+    finally:
+        session.close()
+
+
+@router.message(Command("reject"))
+async def reject_payment(message: Message):
+    """Отклонить запрос на выдачу ВПН ссылки"""
+    if message.from_user.id not in list(ADMIN_ID.values()):
+        return
+
+    try:
+        _, user_id_str = message.text.split()
+        user_id = int(user_id_str)
+    except Exception:
+        await message.answer("❌ Формат команды: /reject <user_id>")
+        return
+
+    session = SessionLocal()
+    try:
+        payment = session.query(Payment).filter_by(tg_user_id=user_id).first()
+
+        if not payment or payment.status != "pending":
+            await message.answer("❌ Пользователь не найден или уже подтвержден/отклонен.")
+            return
+
+        payment.status = "rejected"
+        session.commit()
+
+        await message.bot.send_message(
+            chat_id=user_id,
+            text="❌ Ваша заявка на VPN-доступ была отклонена. Пожалуйста, обратитесь к тех.поддержке.",
+            reply_markup=back_to_main_menu_keyboard
+        )
+
+        await message.answer(f"🚫 Запрос пользователя {user_id} отклонен.")
+    except Exception as e:
+        await message.answer("❗ Ошибка при отклонении запроса!")
+        print(f"[reject error] {e}")
         session.rollback()
     finally:
         session.close()

@@ -4,7 +4,8 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 main_keyboard = InlineKeyboardMarkup(
     inline_keyboard=[
         [InlineKeyboardButton(text="💳 Купить доступ", callback_data="buy_access")],
-        [InlineKeyboardButton(text="📄 Мой аккаунт", callback_data="my_account")]
+        [InlineKeyboardButton(text="📄 Мой аккаунт", callback_data="my_account")],
+        [InlineKeyboardButton(text="🛠️ Тех. поддержка", callback_data="support")]
     ],
     resize_keyboard=True
 )
@@ -17,7 +18,7 @@ choice_time_keyboard = InlineKeyboardMarkup(
         [InlineKeyboardButton(text="1 месяц 250₽", callback_data="1_month")],
         [InlineKeyboardButton(text="3 месяца 600₽", callback_data="3_month")],
         [InlineKeyboardButton(text="1 год 2000₽", callback_data="1_year")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="to_main_menu")]
+        [InlineKeyboardButton(text="🔙 В главное меню", callback_data="to_main_menu")]
     ],
     resize_keyboard=True
 )
@@ -26,7 +27,7 @@ choice_time_keyboard = InlineKeyboardMarkup(
 payment_keyboard = InlineKeyboardMarkup(
     inline_keyboard=[
         [InlineKeyboardButton(text="💳 Оплатить через СБП (QR-код)", callback_data="pay_sbp")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="to_main_menu")]
+        [InlineKeyboardButton(text="🔙 В главное меню", callback_data="to_main_menu")]
     ],
     resize_keyboard=True
 )
@@ -34,8 +35,16 @@ payment_keyboard = InlineKeyboardMarkup(
 # кнопка подтверждения оплаты
 confirm_or_deny_keyboard = InlineKeyboardMarkup(
     inline_keyboard=[
-        [InlineKeyboardButton(text="✅Я оплатил", callback_data="pay_paid")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="to_main_menu")]
+        [InlineKeyboardButton(text="✅ Я оплатил", callback_data="pay_paid")],
+        [InlineKeyboardButton(text="🔙 В главное меню", callback_data="to_main_menu")]
+    ],
+    resize_keyboard=True
+)
+
+# просто кнопка в главное меню
+back_to_main_menu_keyboard = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 В главное меню", callback_data="to_main_menu")]
     ],
     resize_keyboard=True
 )
