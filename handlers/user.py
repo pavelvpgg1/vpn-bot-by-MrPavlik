@@ -32,36 +32,37 @@ SessionLocal = sessionmaker(bind=engine)
 
 
 # Взаимодействие с юзером
-@router.message(Command("start"))  # команда /start -> Выбор тарифа/Инфо об аккаунте
+@router.message(Command("start"))
 async def start_handler(message: Message):
+    """команда /start -> Выбор тарифа/Инфо об аккаунте"""
     await message.answer("Привет! Выбери тариф, чтобы купить VPN-доступ.", reply_markup=main_keyboard)
 
 
-@router.callback_query(F.data == "to_main_menu")  # Выбор тарифа/Инфо об аккаунте
+@router.callback_query(F.data == "to_main_menu")
 async def handle_back_to_main(callback: CallbackQuery):
-    await callback.answer()
+    """Выбор тарифа/Инфо об аккаунте"""
     await callback.message.answer("Главное меню", reply_markup=main_keyboard)
 
 
-@router.callback_query(F.data == "buy_access")  # Выбор продолжительности подписки
+@router.callback_query(F.data == "buy_access")
 async def handle_buy_access(callback: CallbackQuery):
-    await callback.answer()
+    """Выбор продолжительности подписки"""
     await callback.message.answer("Выбери продолжительность подписки:", reply_markup=choice_time_keyboard)
 
 
-@router.callback_query(F.data.in_(SUBSCRIPTION_TEXTS.keys()))  # Выбор способа оплаты
+@router.callback_query(F.data.in_(SUBSCRIPTION_TEXTS.keys()))
 async def handle_subscription_choice(callback: CallbackQuery):
+    """Выбор способа оплаты"""
     duration = SUBSCRIPTION_TEXTS[callback.data][0]
-    await callback.answer()
     await callback.message.answer(f"Вы выбрали продолжительность подписки: `{duration}`", parse_mode="Markdown")
     await callback.message.answer("Выберите способ оплаты:", reply_markup=payment_keyboard)
     global DURATION
     DURATION = SUBSCRIPTION_TEXTS[callback.data][1]
 
 
-@router.callback_query(F.data == "pay_sbp")  # Оплата по СБП
+@router.callback_query(F.data == "pay_sbp")
 async def pay_sbp_handler(callback: CallbackQuery):
-    await callback.answer()
+    """Оплата по СБП"""
     photo = FSInputFile("images/qr_sbp.png")
     await callback.message.answer_photo(
         photo=photo,
@@ -78,8 +79,9 @@ async def pay_sbp_handler(callback: CallbackQuery):
     PAYMENT_METHOD = "СБП"
 
 
-@router.callback_query(F.data == "pay_paid")  # Подтверждение
+@router.callback_query(F.data == "pay_paid")
 async def pay_paid_handler(callback: CallbackQuery):
+    """Подтверждение от пользователя, что он оплатил"""
     tg_user_id = callback.from_user.id
     username = callback.from_user.username
     payment_method = PAYMENT_METHOD
@@ -94,8 +96,9 @@ async def pay_paid_handler(callback: CallbackQuery):
 
 
 # Аккаунт пользователя
-@router.callback_query(F.data == "my_account")  # Инфо об аккаунте
+@router.callback_query(F.data == "my_account")
 async def handle_my_account(callback: CallbackQuery):
+    """Инфо об аккаунте пользователя"""
     session = SessionLocal()
     try:
         payment = session.query(Payment).filter_by(tg_user_id=int(callback.from_user.id)).first()
@@ -133,15 +136,16 @@ async def handle_my_account(callback: CallbackQuery):
     except Exception as e:
         await callback.message.answer(
             "❗ Ошибка при попытке просмотра аккаунта! Пожалуйста, обратитесь к администрартору (@pavelvpgg1)")
-        print(f"[approve error] {e}")
+        print(f"[account error] {e}")
         session.rollback()
     finally:
         session.close()
 
 
 # Админка
-@router.message(Command("approve"))  # Подтвердить запрос
+@router.message(Command("approve"))
 async def approve_payment(message: Message):
+    """Подтвердить запрос на выдачу ВПН ссылки"""
     if message.from_user.id not in list(ADMIN_ID.values()):  # тг айди админов
         return
 
@@ -175,10 +179,48 @@ async def approve_payment(message: Message):
             chat_id=user_id,
             text=(
                 f"🔐 Оплата подтверждена! Вот ваша ссылка на VPN: `{vpn_link}`\n\n"
-                "Инструкция по подключению: ..."
+                "❗️❗️❗️Туториал по VPN'у❗️❗️❗️\n"
+                "Android📱:\n"
+                "1) Устанавливаем *v2rayNG* (ниже apk файл под названием `v2rayNG_1.9.30_APKPure.apk`)\n"
+                "2) Заходим -> Нажимаем на \"*+*\" -> *Импорт из буфера обмена* -> должен появиться новый профиль -> нажимаем на профиль -> в правом нижнем углу нажимаем кнопку \"*Пуск*\"\n\n"
+                "IPhone📱:\n"
+                "1) Устанавливаем *V2RayTun* с AppStore ([ссылка на приложение](https://apps.apple.com/kz/app/v2raytun/id6476628951))\n"
+                "2) Заходим в приложение\n"
+                "3) В правом верхнем углу нажимаем \"*+*\" -> \"*Добавить из буфера обмена*\" (Скопируйте ссылку, которую выдал бот) -> должен появиться новый профиль\n"
+                "4) Нажимаем *кнопку запуска* посередине\n\n"
+                "Windows🖥️:\n"
+                "1) Устанавливаем архив с *Nekobox* (ниже zip архив под названием `nekoray-4.0.1-2024-12-12-windows64.zip`)\n"
+                "2) Распаковываем архив\n"
+                "3) Запускаем \"*nekobox.exe*\"\n"
+                "4) Нажимаем кнопку \"*Сервер*\" -> \"*Добавить из буфера обмена*\" (Скопируйте ссылку, которую выдал бот) -> ставим галочку сверху на пункте \"*Режим TUN*\" -> Нажимаем *правую кнопку мыши* по появившемуся соединению -> Выбираем пункт \"*Запустить*\"\n\n"
+                "Linux🖥️:\n"
+                "1) Устанавливаем архив с *Nekobox* (ниже zip архив под названием `nekoray-4.0.1-2024012012-linux64.zip`)\n"
+                "2) Распаковываем архив\n"
+                "3) Запускаем \"*nekobox.exe*\"\n"
+                "4) Нажимаем кнопку \"*Сервер*\" -> \"*Добавить из буфера обмена*\" (Скопируйте ссылку, которую выдал бот) -> ставим галочку сверху на пункте \"*Режим TUN*\" -> Нажимаем *правую кнопку мыши* по появившемуся соединению -> Выбираем пункт \"*Запустить*\"\n\n"
             ),
             parse_mode="Markdown"
         )
+        # файл для Android
+        v2ray_android = FSInputFile("files/v2rayNG_1.9.30_APKPure.apk")
+        await message.bot.send_document(
+            chat_id=user_id,
+            document=v2ray_android,
+            caption="Приложение для Android"
+        )
+        # файл для Windows
+        neko_windows = FSInputFile("files/nekoray-4.0.1-2024-12-12-windows64.zip")
+        await message.bot.send_document(
+            chat_id=user_id,
+            document=neko_windows,
+            caption="Приложение для Windows"
+        )
+        # файл для Linux
+        neko_linux = FSInputFile("files/nekoray-4.0.1-2024-12-12-linux64.zip")
+        await message.bot.send_document(
+            chat_id=user_id,
+            document=neko_linux,
+            caption="Приложение для Linux")
 
         await message.answer(f"✅ Доступ выдан пользователю {user_id}")
     except Exception as e:

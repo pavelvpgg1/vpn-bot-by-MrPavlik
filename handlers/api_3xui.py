@@ -18,8 +18,8 @@ _api = Api(host=environ["XUI_HOST"],
 _api.login()
 
 
-# Основная функция создания клиента
 def create_client_for_user(tg_user_id: int, duration_days: int):
+    """Функция создания клиента"""
     email = f"{tg_user_id}@MrPavlik.ru"
 
     tz = pytz.timezone("Asia/Yekaterinburg")
@@ -44,6 +44,7 @@ def create_client_for_user(tg_user_id: int, duration_days: int):
 
 
 def generate_vpn_link(user_email: str) -> str:
+    """Создание ссылки на доступ к ВПН"""
     inbound = _api.inbound.get_by_id(7)
 
     # Ищем клиента по email

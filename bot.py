@@ -8,8 +8,8 @@ from handlers.user import router as user_router
 from utils.logger import setup_logger
 
 
-# Главная функция создания бота
 async def main():
+    """Главная функция создания бота"""
     setup_logger()
     bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode='HTML'))
     dp = Dispatcher()
