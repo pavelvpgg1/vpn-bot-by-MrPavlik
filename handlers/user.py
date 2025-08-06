@@ -21,29 +21,35 @@ SUBSCRIPTION_TEXTS = {
 }
 PAYMENT_METHOD = ""
 DURATION = 0
+ADMIN_ID = {
+    "@pavelvpgg1": 2100039698,
+    "@Orin286": 1171128013,
+    "@DdOaNrYk_0": 1894484454
+}
+
 router = Router()
 SessionLocal = sessionmaker(bind=engine)
 
 
 # Взаимодействие с юзером
-@router.message(Command("start")) # команда /start -> Выбор тарифа/Инфо об аккаунте
+@router.message(Command("start"))  # команда /start -> Выбор тарифа/Инфо об аккаунте
 async def start_handler(message: Message):
     await message.answer("Привет! Выбери тариф, чтобы купить VPN-доступ.", reply_markup=main_keyboard)
 
 
-@router.callback_query(F.data == "to_main_menu") # Выбор тарифа/Инфо об аккаунте
+@router.callback_query(F.data == "to_main_menu")  # Выбор тарифа/Инфо об аккаунте
 async def handle_back_to_main(callback: CallbackQuery):
     await callback.answer()
     await callback.message.answer("Главное меню", reply_markup=main_keyboard)
 
 
-@router.callback_query(F.data == "buy_access") # Выбор продолжительности подписки
+@router.callback_query(F.data == "buy_access")  # Выбор продолжительности подписки
 async def handle_buy_access(callback: CallbackQuery):
     await callback.answer()
     await callback.message.answer("Выбери продолжительность подписки:", reply_markup=choice_time_keyboard)
 
 
-@router.callback_query(F.data.in_(SUBSCRIPTION_TEXTS.keys())) # Выбор способа оплаты
+@router.callback_query(F.data.in_(SUBSCRIPTION_TEXTS.keys()))  # Выбор способа оплаты
 async def handle_subscription_choice(callback: CallbackQuery):
     duration = SUBSCRIPTION_TEXTS[callback.data][0]
     await callback.answer()
@@ -53,7 +59,7 @@ async def handle_subscription_choice(callback: CallbackQuery):
     DURATION = SUBSCRIPTION_TEXTS[callback.data][1]
 
 
-@router.callback_query(F.data == "pay_sbp") # Оплата по СБП
+@router.callback_query(F.data == "pay_sbp")  # Оплата по СБП
 async def pay_sbp_handler(callback: CallbackQuery):
     await callback.answer()
     photo = FSInputFile("images/qr_sbp.png")
@@ -69,10 +75,10 @@ async def pay_sbp_handler(callback: CallbackQuery):
         parse_mode="Markdown"
     )
     global PAYMENT_METHOD
-    PAYMENT_METHOD = "оплата по СБП"
+    PAYMENT_METHOD = "СБП"
 
 
-@router.callback_query(F.data == "pay_paid") # Подтверждение
+@router.callback_query(F.data == "pay_paid")  # Подтверждение
 async def pay_paid_handler(callback: CallbackQuery):
     tg_user_id = callback.from_user.id
     username = callback.from_user.username
@@ -88,16 +94,55 @@ async def pay_paid_handler(callback: CallbackQuery):
 
 
 # Аккаунт пользователя
-@router.callback_query(F.data == "my_account") # Инфо об аккаунте
+@router.callback_query(F.data == "my_account")  # Инфо об аккаунте
 async def handle_my_account(callback: CallbackQuery):
-    await callback.answer()
-    await callback.message.answer("Твой аккаунт:")
+    session = SessionLocal()
+    try:
+        payment = session.query(Payment).filter_by(tg_user_id=int(callback.from_user.id)).first()
+
+        if not payment:
+            await callback.message.answer("❌ Вы еще не покупали доступ")
+            return
+
+        # Данные пользователя
+        payment_method = payment.payment_method
+        status = payment.status
+        if status == "approved":
+            active_until = (datetime.datetime.now(pytz.timezone("Asia/Yekaterinburg")) + datetime.timedelta(
+                days=payment.duration)).strftime("%d.%m.%Y")
+            days_left = ((payment.created_at + datetime.timedelta(days=payment.duration)) - payment.created_at).days
+            approved_by = [key for key, value in ADMIN_ID.items() if value == payment.approved_by][0]
+            await callback.message.answer(
+                text=("Твой аккаунт:\n"
+                      f"Имя: `{callback.from_user.first_name}`\n"
+                      f"Подписка активна до: `{active_until}`\n"
+                      f"До конца подписки: {days_left} дней\n"
+                      f"Оплата была произведена при помощи: `{payment_method}`\n"
+                      f"Статус вашей оплаты: `{status}`\n"
+                      f"Ваш запрос подтвердил админ: `{approved_by}`\n"),
+                parse_mode="Markdown")
+        elif status == "pending":
+            await callback.message.answer(
+                text=("Ваш аккаунт:\n"
+                      f"Имя: `{callback.from_user.first_name}`\n"
+                      f"Оплата была произведена при помощи: `{payment_method}`\n"
+                      f"Статус вашей оплаты: `{status}`\n"
+                      "❗Ваш запрос пока что не подтвержден\n"),
+                parse_mode="Markdown")
+
+    except Exception as e:
+        await callback.message.answer(
+            "❗ Ошибка при попытке просмотра аккаунта! Пожалуйста, обратитесь к администрартору (@pavelvpgg1)")
+        print(f"[approve error] {e}")
+        session.rollback()
+    finally:
+        session.close()
 
 
 # Админка
-@router.message(Command("approve")) # Подтвердить запрос
+@router.message(Command("approve"))  # Подтвердить запрос
 async def approve_payment(message: Message):
-    if message.from_user.id not in [2100039698]:  # тг айди админов
+    if message.from_user.id not in list(ADMIN_ID.values()):  # тг айди админов
         return
 
     try:

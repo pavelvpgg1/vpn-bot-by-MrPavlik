@@ -20,6 +20,7 @@ class Payment(Base):
     created_at = Column(DateTime, default=lambda: datetime.datetime.now(pytz.timezone("Etc/GMT-5")))  # время создания
     confirmed_at = Column(DateTime, nullable=True)  # время принятия запроса
     duration = Column(BigInteger, nullable=True)  # продолжительность
+    approved_by = Column(BigInteger, nullable=True)  # ТГ айди админа, который подтвердил
 
 
 Base.metadata.create_all(engine)
