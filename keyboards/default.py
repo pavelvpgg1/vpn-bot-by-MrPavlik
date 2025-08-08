@@ -13,12 +13,12 @@ main_keyboard = InlineKeyboardMarkup(
 # кнопки выбора времени подписки
 choice_time_keyboard = InlineKeyboardMarkup(
     inline_keyboard=[
-        [InlineKeyboardButton(text="1 день 50₽", callback_data="1_day")],
-        [InlineKeyboardButton(text="3 дня 75₽", callback_data="3_day")],
-        [InlineKeyboardButton(text="7 дней 100₽", callback_data="7_day")],
-        [InlineKeyboardButton(text="1 месяц 250₽", callback_data="1_month")],
-        [InlineKeyboardButton(text="3 месяца 600₽", callback_data="3_month")],
-        [InlineKeyboardButton(text="1 год 2000₽", callback_data="1_year")],
+        [InlineKeyboardButton(text="1 день 15₽", callback_data="1_day")],
+        [InlineKeyboardButton(text="3 дня 30₽", callback_data="3_day")],
+        [InlineKeyboardButton(text="7 дней 50₽", callback_data="7_day")],
+        [InlineKeyboardButton(text="1 месяц 150₽", callback_data="1_month")],
+        [InlineKeyboardButton(text="3 месяца 300₽", callback_data="3_month")],
+        [InlineKeyboardButton(text="1 год 1000₽", callback_data="1_year")],
         [InlineKeyboardButton(text="🔙 В главное меню", callback_data="to_main_menu")]
     ],
     resize_keyboard=True
