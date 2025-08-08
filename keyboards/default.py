@@ -14,6 +14,7 @@ main_keyboard = InlineKeyboardMarkup(
 choice_time_keyboard = InlineKeyboardMarkup(
     inline_keyboard=[
         [InlineKeyboardButton(text="1 день 50₽", callback_data="1_day")],
+        [InlineKeyboardButton(text="3 дня 75₽", callback_data="3_day")],
         [InlineKeyboardButton(text="7 дней 100₽", callback_data="7_day")],
         [InlineKeyboardButton(text="1 месяц 250₽", callback_data="1_month")],
         [InlineKeyboardButton(text="3 месяца 600₽", callback_data="3_month")],
@@ -47,6 +48,19 @@ back_to_main_menu_keyboard = InlineKeyboardMarkup(
         [InlineKeyboardButton(text="🔙 В главное меню", callback_data="to_main_menu")]
     ],
     resize_keyboard=True
+)
+
+# кнопки для админов
+admin_action_keyboard = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="✅ Принять", callback_data=f"approve_user_button"),
+            InlineKeyboardButton(text="❌ Отклонить", callback_data=f"reject_user_button"),
+        ],
+        [
+            InlineKeyboardButton(text="💬 Связаться", callback_data="call_user_button")
+        ]
+    ]
 )
 
 # кнопка назад универсальная (чуть позже доработаю)

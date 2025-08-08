@@ -3,6 +3,7 @@ import datetime
 import pytz
 from aiogram import Router, F
 from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery, FSInputFile
 from sqlalchemy.orm import sessionmaker
 
@@ -12,8 +13,9 @@ from handlers.api_3xui import create_client_for_user, generate_vpn_link
 from keyboards.default import (main_keyboard,
                                choice_time_keyboard,
                                payment_keyboard,
-                               confirm_or_deny_keyboard, \
+                               confirm_or_deny_keyboard,
                                back_to_main_menu_keyboard)
+from utils.states import PaymentState
 
 SUBSCRIPTION_TEXTS = {
     "1_day": ["1 день", 1],
@@ -23,8 +25,6 @@ SUBSCRIPTION_TEXTS = {
     "3_month": ["3 месяца", 90],
     "1_year": ["1 год", 365]
 }
-PAYMENT_METHOD = ""
-DURATION = 0
 ADMIN_ID = {
     "@pavelvpgg1": 2100039698,
     "@Orin286": 1171128013,
@@ -74,23 +74,24 @@ async def handle_support(callback: CallbackQuery):
 
 
 @router.callback_query(F.data.in_(SUBSCRIPTION_TEXTS.keys()))
-async def handle_subscription_choice(callback: CallbackQuery):
+async def handle_subscription_choice(callback: CallbackQuery, state: FSMContext):
     """Выбор способа оплаты"""
-    duration = SUBSCRIPTION_TEXTS[callback.data][0]
+    duration_label, duration_days = SUBSCRIPTION_TEXTS[callback.data]
     await callback.message.answer(
-        f"⌛ Вы выбрали продолжительность подписки: `{duration}`",
+        f"⌛ Вы выбрали продолжительность подписки: `{duration_label}`",
         parse_mode="Markdown"
     )
     await callback.message.answer(
         "🔀 Выберите способ оплаты:",
         reply_markup=payment_keyboard
     )
-    global DURATION
-    DURATION = SUBSCRIPTION_TEXTS[callback.data][1]
+
+    await state.update_data(duration=duration_days)
+    await state.set_state(PaymentState.choosing_payment_method)
 
 
 @router.callback_query(F.data == "pay_sbp")
-async def pay_sbp_handler(callback: CallbackQuery):
+async def pay_sbp_handler(callback: CallbackQuery, state: FSMContext):
     """Оплата по СБП"""
     photo = FSInputFile("images/qr_sbp.png")
     await callback.message.answer_photo(
@@ -104,18 +105,19 @@ async def pay_sbp_handler(callback: CallbackQuery):
         reply_markup=confirm_or_deny_keyboard,
         parse_mode="Markdown"
     )
-    global PAYMENT_METHOD
-    PAYMENT_METHOD = "СБП"
+    await state.update_data(payment_method="СБП")
+    await state.set_state(PaymentState.awaiting_confirmation)
 
 
 @router.callback_query(F.data == "pay_paid")
-async def pay_paid_handler(callback: CallbackQuery):
+async def pay_paid_handler(callback: CallbackQuery, state: FSMContext):
     """Подтверждение от пользователя, что он оплатил"""
     tg_user_id = callback.from_user.id
     username = callback.from_user.username
-    payment_method = PAYMENT_METHOD
+    data = await state.get_data()
+    duration = data.get("duration")
+    payment_method = data.get("payment_method")
     status = "pending"
-    duration = DURATION
 
     success = add_payment(tg_user_id, username, payment_method, status, duration)
     if success:
@@ -123,6 +125,7 @@ async def pay_paid_handler(callback: CallbackQuery):
             "💾 Ваш запрос принят на рассмотрение, в течение часа будет готов ваш доступ к VPN",
             reply_markup=back_to_main_menu_keyboard
         )
+        await state.clear()
     else:
         await callback.message.answer(
             "❗ Что-то пошло не так! Пожалуйста, обратитесь к администрартору (@pavelvpgg1)"
@@ -317,3 +320,9 @@ async def reject_payment(message: Message):
         session.rollback()
     finally:
         session.close()
+
+# дебаг
+# @router.callback_query()
+# async def debug_callback(callback: CallbackQuery):
+#     print("[DEBUG] callback.data =", callback.data)
+#     await callback.answer("⚠️ Необработанный callback.")

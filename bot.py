@@ -2,6 +2,7 @@ import asyncio
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
+from aiogram.fsm.storage.memory import MemoryStorage
 
 from config import BOT_TOKEN
 from handlers.user import router as user_router
@@ -14,7 +15,8 @@ async def main():
     setup_logger()
     await login_api()
     bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode='HTML'))
-    dp = Dispatcher()
+    storage = MemoryStorage()
+    dp = Dispatcher(storage=storage)
     dp.include_router(user_router)
     await dp.start_polling(bot)
 
