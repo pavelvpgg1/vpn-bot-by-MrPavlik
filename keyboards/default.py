@@ -54,11 +54,11 @@ back_to_main_menu_keyboard = InlineKeyboardMarkup(
 admin_action_keyboard = InlineKeyboardMarkup(
     inline_keyboard=[
         [
-            InlineKeyboardButton(text="✅ Принять", callback_data=f"approve_user_button"),
-            InlineKeyboardButton(text="❌ Отклонить", callback_data=f"reject_user_button"),
+            InlineKeyboardButton(text="✅ Принять", callback_data="approve_user"),
+            InlineKeyboardButton(text="❌ Отклонить", callback_data="reject_user"),
         ],
         [
-            InlineKeyboardButton(text="💬 Связаться", callback_data="call_user_button")
+            InlineKeyboardButton(text="💬 Связаться", callback_data="call_user")
         ]
     ]
 )

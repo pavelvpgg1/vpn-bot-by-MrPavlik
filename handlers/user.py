@@ -14,7 +14,8 @@ from keyboards.default import (main_keyboard,
                                choice_time_keyboard,
                                payment_keyboard,
                                confirm_or_deny_keyboard,
-                               back_to_main_menu_keyboard)
+                               back_to_main_menu_keyboard,
+                               admin_action_keyboard)
 from utils.states import PaymentState
 
 SUBSCRIPTION_TEXTS = {
@@ -37,21 +38,29 @@ SessionLocal = sessionmaker(bind=engine)
 
 # Взаимодействие с юзером
 @router.message(Command("start"))
-async def start_handler(message: Message):
+async def start_handler(message: Message, state: FSMContext):
     """команда /start -> Выбор тарифа/Инфо об аккаунте"""
     await message.answer(
         "Привет! Выбери тариф, чтобы купить VPN-доступ.",
         reply_markup=main_keyboard
     )
+    await state.update_data(user_id=message.from_user.id)
+    await state.update_data(username=message.from_user.username)
 
 
 @router.callback_query(F.data == "to_main_menu")
-async def handle_back_to_main(callback: CallbackQuery):
-    """Выбор тарифа/Инфо об аккаунте"""
+async def handle_back_to_main(callback: CallbackQuery, state: FSMContext):
+    """Вернуться в главное меню"""
     await callback.message.answer(
         "Главное меню",
         reply_markup=main_keyboard
     )
+    for message in range(callback.message.message_id, 0, -1):
+        try:
+            await callback.bot.delete_message(callback.message.chat.id, message)
+        except Exception:
+            continue
+    await state.clear()
 
 
 @router.callback_query(F.data == "buy_access")
@@ -125,7 +134,11 @@ async def pay_paid_handler(callback: CallbackQuery, state: FSMContext):
             "💾 Ваш запрос принят на рассмотрение, в течение часа будет готов ваш доступ к VPN",
             reply_markup=back_to_main_menu_keyboard
         )
-        await state.clear()
+        for admin_id in list(ADMIN_ID.values()):
+            await callback.bot.send_message(chat_id=admin_id,
+                                            text=f"@{username} с ID: `{tg_user_id}` отправил запрос на рассмотрение его заявки на VPN.",
+                                            parse_mode="Markdown",
+                                            reply_markup=admin_action_keyboard)
     else:
         await callback.message.answer(
             "❗ Что-то пошло не так! Пожалуйста, обратитесь к администрартору (@pavelvpgg1)"
@@ -192,18 +205,9 @@ async def handle_my_account(callback: CallbackQuery):
 
 
 # Админка
-@router.message(Command("approve"))
-async def approve_payment(message: Message):
+async def approve_payment(message: Message, user_id: int):
     """Подтвердить запрос на выдачу ВПН ссылки"""
-    if message.from_user.id not in list(ADMIN_ID.values()):  # тг айди админов
-        return
-
-    try:
-        _, user_id_str = message.text.split()
-        user_id = int(user_id_str)
-    except Exception:
-        await message.answer("❌ Формат команды: /approve <user_id>")
-        return
+    user_id = user_id
 
     # Создаём сессию с базой
     session = SessionLocal()
@@ -283,18 +287,9 @@ async def approve_payment(message: Message):
         session.close()
 
 
-@router.message(Command("reject"))
-async def reject_payment(message: Message):
+async def reject_payment(message: Message, user_id: int):
     """Отклонить запрос на выдачу ВПН ссылки"""
-    if message.from_user.id not in list(ADMIN_ID.values()):
-        return
-
-    try:
-        _, user_id_str = message.text.split()
-        user_id = int(user_id_str)
-    except Exception:
-        await message.answer("❌ Формат команды: /reject <user_id>")
-        return
+    user_id = user_id
 
     session = SessionLocal()
     try:
@@ -320,6 +315,47 @@ async def reject_payment(message: Message):
         session.rollback()
     finally:
         session.close()
+
+
+@router.callback_query(F.data == "approve_user")
+async def handle_approve_user(callback: CallbackQuery, state: FSMContext):
+    """Кнопка принятия запроса"""
+    data = await state.get_data()
+    user_id = data.get("user_id")
+    username = data.get("username")
+    await approve_payment(callback.message, user_id)
+    for admin_id in list(ADMIN_ID.values()):
+        await callback.bot.send_message(chat_id=admin_id,
+                                        text=f"Запрос @{username} с ID `{user_id}` был принят!",
+                                        parse_mode="Markdown")
+    await state.clear()
+
+
+@router.callback_query(F.data == "reject_user")
+async def handle_reject_user(callback: CallbackQuery, state: FSMContext):
+    """Кнопка отклонения запроса"""
+    data = await state.get_data()
+    user_id = data.get("user_id")
+    username = data.get("username")
+    await reject_payment(callback.message, user_id)
+    for admin_id in list(ADMIN_ID.values()):
+        await callback.bot.send_message(chat_id=admin_id,
+                                        text=f"Запрос @{username} с ID `{user_id}` был отклонен",
+                                        parse_mode="Markdown")
+    await state.clear()
+
+
+@router.callback_query(F.data == "call_user")
+async def handle_call_user(callback: CallbackQuery, state: FSMContext):
+    """Кнопка для связи с пользователем"""
+    data = await state.get_data()
+    user_id = data.get("user_id")
+    username = data.get("username")
+    for admin_id in list(ADMIN_ID.values()):
+        await callback.bot.send_message(chat_id=admin_id,
+                                        text=f"Вот юзер с ID `{user_id}`: https://t.me/{username}",
+                                        parse_mode="Markdown")
+    await state.clear()
 
 # дебаг
 # @router.callback_query()
